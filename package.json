@@ -5,9 +5,6 @@
   "license": "BSD-3-Clause",
   "type": "module",
   "exports": "./lib/index.js",
-  "browser": {
-    "./lib/util.js": "./lib/util-browser.js"
-  },
   "files": [
     "lib/**/*.js"
   ],
@@ -33,9 +30,6 @@
     "url": "https://github.com/digitalbazaar/http-signature-header/issues"
   },
   "homepage": "https://github.com/digitalbazaar/http-signature-header#readme",
-  "dependencies": {
-    "assert-plus": "^1.0.0"
-  },
   "devDependencies": {
     "c8": "^7.11.3",
     "chai": "^4.3.6",
