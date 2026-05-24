@@ -5,8 +5,10 @@
   "license": "BSD-3-Clause",
   "type": "module",
   "exports": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "files": [
-    "lib/**/*.js"
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
   ],
   "scripts": {
     "test": "npm run test-node",
@@ -15,7 +17,8 @@
     "coverage": "cross-env NODE_ENV=test c8 npm run test-node",
     "coverage-ci": "cross-env NODE_ENV=test c8 --reporter=lcovonly --reporter=text-summary --reporter=text npm run test-node",
     "coverage-report": "c8 report",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -46,6 +49,7 @@
     "karma-sourcemap-loader": "^0.3.8",
     "karma-webpack": "^5.0.0",
     "mocha": "^10.0.0",
+    "typescript": "^5.9.3",
     "uuid": "^8.3.2",
     "webpack": "^5.72.1"
   },

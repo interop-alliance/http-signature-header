@@ -1,8 +1,8 @@
-# HTTP Signature Header _(http-signature-header)_
+# HTTP Signature Header _(@interop/http-signature-header)_
 
 [![NPM Version](https://img.shields.io/npm/v/http-signature-header.svg)](https://npm.im/http-signature-header)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/digitalbazaar/http-signature-header/main.yaml)](https://github.com/digitalbazaar/http-signature-header/actions/workflows/main.yaml)
-[![Coverage Status](https://img.shields.io/codecov/c/github/digitalbazaar/http-signature-header)](https://codecov.io/gh/digitalbazaar/http-signature-header)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/interop-alliance/http-signature-header/main.yaml)](https://github.com/interop-alliance/http-signature-header/actions/workflows/main.yaml)
+[![Coverage Status](https://img.shields.io/codecov/c/github/interop-alliance/http-signature-header)](https://codecov.io/gh/interop-alliance/http-signature-header)
 
 > A JavaScript library for creating and verifying HTTP Signature headers
 
@@ -24,7 +24,7 @@
 To install locally (for development):
 
 ```
-git clone https://github.com/digitalbazaar/http-signature-header.git
+git clone https://github.com/interop-alliance/http-signature-header.git
 cd http-signature-header
 npm install
 ```
@@ -34,7 +34,7 @@ npm install
 ```js
 import {
   createAuthzHeader, createSignatureString
-} from '@digitalbazaar/http-signature-header';
+} from '@interop/http-signature-header';
 
 const requestOptions = {
   url,

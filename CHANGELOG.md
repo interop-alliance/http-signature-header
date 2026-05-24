@@ -1,4 +1,6 @@
-# @digitalbazaar/http-signature-header
+# @interop/http-signature-header
+
+
 
 ## 5.0.1 - 2024-08-08
 
