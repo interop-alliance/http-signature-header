@@ -1,6 +1,14 @@
 # @interop/http-signature-header
 
+## 5.0.2 - 2026-05-24
 
+### Changed
+- **BREAKING**: Forked from `@digitalbazaar/http-signature-header@5.0.1` to `@interop/http-signature-header`.
+
+### Added
+- Add JSDocs typedefs, expand param docs.
+- Add `package.json` `exports` field.
+- Add TypeScript types.
 
 ## 5.0.1 - 2024-08-08
 

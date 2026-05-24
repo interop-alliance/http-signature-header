@@ -1,6 +1,6 @@
 {
-  "name": "@digitalbazaar/http-signature-header",
-  "version": "5.0.2-0",
+  "name": "@interop/http-signature-header",
+  "version": "5.0.2",
   "description": "",
   "license": "BSD-3-Clause",
   "type": "module",
@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/digitalbazaar/http-signature-header.git"
+    "url": "https://github.com/interop-alliance/http-signature-header.git"
   },
   "author": {
     "name": "Digital Bazaar, Inc.",
