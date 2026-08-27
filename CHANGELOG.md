@@ -10,6 +10,16 @@
   case-insensitively.
 - `parseRequest()` now applies the `Expires`/`Date`/`X-Date` request expiry
   check regardless of the case of those header names.
+- `parseRequest()` no longer rejects a request carrying a real `Expires`
+  header. Pseudo-header values from the signature were merged into the request
+  headers object, so the `Expires` header (an HTTP-date) was validated as if it
+  were the `(expires)` signature parameter (a UNIX timestamp), throwing
+  `"expires" must be a UNIX timestamp or JavaScript Date.`. Pseudo-headers now
+  use their own namespace.
+- `parseRequest()` now rejects an unparseable `Expires`/`X-Date`/`Date` header
+  with a `SyntaxError`. Comparing an Invalid Date always yields false, so a
+  malformed value was silently accepted as "not expired". Only the
+  highest-priority header present is examined, as before.
 
 ## 5.0.2 - 2026-05-24
 
