@@ -1179,7 +1179,7 @@ describe('http-signature', () => {
         headers: {
           Host: 'example.com:18443',
           // expired beyond the default 300s clock skew
-          Expires: new Date((now - 301) * 1000),
+          Expires: new Date((now - 301) * 1000).toUTCString(),
           Authorization: authorization
         },
         method: 'GET',
@@ -1221,5 +1221,127 @@ describe('http-signature', () => {
         shouldBeParsed(parsed);
         parsed.signingString.should.contain(`(expires): ${created + 600}`);
       });
+    it('should accept an unexpired `Expires` header as an HTTP-date', () => {
+      // a real `Expires` header is an HTTP-date string (RFC 9111), never a
+      // UNIX timestamp
+      const authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="host (request-target)",signature="mockSignature"';
+      const request = {
+        headers: {
+          host: 'example.com:18443',
+          expires: new Date((now + 600) * 1000).toUTCString(),
+          authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const parsed = httpSignatureHeader.parseRequest(
+        request, {headers: ['host'], now});
+      shouldBeParsed(parsed);
+      parsed.signingString.should.equal(
+        'host: example.com:18443\n(request-target): get /1/2/3');
+    });
+    it('should reject an expired `Expires` header as an HTTP-date', () => {
+      const authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="host (request-target)",signature="mockSignature"';
+      const request = {
+        headers: {
+          host: 'example.com:18443',
+          // expired beyond the default 300s clock skew
+          expires: new Date((now - 301) * 1000).toUTCString(),
+          authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      let error = null;
+      let result = null;
+      try {
+        result = httpSignatureHeader.parseRequest(
+          request, {headers: ['host'], now});
+      } catch(e) {
+        error = e;
+      }
+      expect(result, 'result should not exist').to.be.null;
+      expect(error, 'error should exist').to.not.be.null;
+      error.message.should.equal('The request has expired.');
+    });
+    it('should keep an `Expires` header and an `(expires)` param separate',
+      () => {
+        // the `(expires)` signature parameter is a UNIX timestamp; the
+        // `Expires` HTTP header is an unrelated HTTP-date. Both are present
+        // here and each must be interpreted on its own terms.
+        const expires = now + 600;
+        const authorization = 'Signature keyId="https://example.com/key/1",' +
+          'headers="host (request-target) (created) (expires)",' +
+          `signature="mockSignature",created="${now}",expires="${expires}"`;
+        const request = {
+          headers: {
+            host: 'example.com:18443',
+            expires: new Date((now + 500) * 1000).toUTCString(),
+            authorization
+          },
+          method: 'GET',
+          url: 'https://example.com:18443/1/2/3',
+        };
+        const parsed = httpSignatureHeader.parseRequest(
+          request, {headers: ['host'], now});
+        shouldBeParsed(parsed);
+        // the signing string must carry the param, not the header value
+        parsed.signingString.should.equal(
+          'host: example.com:18443\n' +
+          '(request-target): get /1/2/3\n' +
+          `(created): ${now}\n` +
+          `(expires): ${expires}`);
+      });
+    // an unparseable date yields an Invalid Date, and every comparison
+    // against one is false, so it must not be read as "not expired"
+    const unparseableDates = [
+      ['expires', {expires: 'not-a-date'}],
+      ['x-date', {'x-date': 'not-a-date'}],
+      ['date', {date: 'not-a-date'}]
+    ];
+    for(const [name, dateHeaders] of unparseableDates) {
+      it(`should reject an unparseable \`${name}\` header`, () => {
+        const authorization = 'Signature keyId="https://example.com/key/1",' +
+          'headers="host (request-target)",signature="mockSignature"';
+        const request = {
+          headers: {host: 'example.com:18443', ...dateHeaders, authorization},
+          method: 'GET',
+          url: 'https://example.com:18443/1/2/3',
+        };
+        let error = null;
+        let result = null;
+        try {
+          result = httpSignatureHeader.parseRequest(
+            request, {headers: ['host'], now});
+        } catch(e) {
+          error = e;
+        }
+        expect(result, 'result should not exist').to.be.null;
+        expect(error, 'error should exist').to.not.be.null;
+        error.name.should.equal('SyntaxError');
+        error.message.should.equal(
+          `The "${name}" header is not a valid HTTP date.`);
+      });
+    }
+    it('should only examine the highest-priority date header present', () => {
+      // `expires` wins, so the unparseable `date` is never looked at
+      const authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="host (request-target)",signature="mockSignature"';
+      const request = {
+        headers: {
+          host: 'example.com:18443',
+          expires: new Date((now + 600) * 1000).toUTCString(),
+          date: 'not-a-date',
+          authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const parsed = httpSignatureHeader.parseRequest(
+        request, {headers: ['host'], now});
+      shouldBeParsed(parsed);
+    });
   });
 });
