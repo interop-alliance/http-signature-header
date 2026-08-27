@@ -1,5 +1,16 @@
 # @interop/http-signature-header
 
+## 5.0.3 - TBD
+
+### Fixed
+- `parseRequest()` now matches request header names case-insensitively, as
+  required by HTTP. A request carrying `Authorization` (or any other
+  capitalization) no longer throws "no authorization header present in the
+  request". The `authorizationHeaderName` option is also matched
+  case-insensitively.
+- `parseRequest()` now applies the `Expires`/`Date`/`X-Date` request expiry
+  check regardless of the case of those header names.
+
 ## 5.0.2 - 2026-05-24
 
 ### Changed
