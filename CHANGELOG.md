@@ -1,6 +1,6 @@
 # @interop/http-signature-header
 
-## 5.0.3 - TBD
+## 5.0.3 - 2026-08-27
 
 ### Added
 - `parseSignatureHeader()` now accepts the `created` and `expires` signature
