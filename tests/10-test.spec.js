@@ -452,6 +452,71 @@ describe('http-signature', () => {
     });
 
   });
+  describe('parseSignatureHeader API', () => {
+    // draft-cavage-12 writes `created` and `expires` as bare Unix timestamps,
+    // but producers commonly quote them; both forms must parse. Every other
+    // parameter still requires quotes.
+    const parseParams = s => httpSignatureHeader.parseSignatureHeader(s).params;
+    const shouldThrowBadParam = s => {
+      let error = null;
+      try {
+        httpSignatureHeader.parseSignatureHeader(s);
+      } catch(e) {
+        error = e;
+      }
+      expect(error, 'error should exist').to.not.be.null;
+      error.should.be.an.instanceof(HttpSignatureError);
+      error.name.should.equal('SyntaxError');
+      error.message.should.equal('bad param format');
+    };
+    it('should parse unquoted `created` and `expires`', () => {
+      // verbatim parameter form from draft-cavage-12 Appendix C.3
+      const params = parseParams(
+        'Signature keyId="Test",algorithm="rsa-sha256",' +
+        'created=1402170695,expires=1402170699,' +
+        'headers="(request-target) (created) (expires)",signature="abc"');
+      params.created.should.equal('1402170695');
+      params.expires.should.equal('1402170699');
+      params.keyId.should.equal('Test');
+      params.signature.should.equal('abc');
+    });
+    it('should parse quoted `created` and `expires`', () => {
+      const params = parseParams(
+        'Signature keyId="Test",algorithm="rsa-sha256",' +
+        'created="1402170695",expires="1402170699",' +
+        'headers="(request-target) (created) (expires)",signature="abc"');
+      params.created.should.equal('1402170695');
+      params.expires.should.equal('1402170699');
+    });
+    it('should parse an unquoted value at the end of the header', () => {
+      // an unquoted value has no closing delimiter, so it is terminated by
+      // the end of the string rather than by a quote
+      parseParams('Signature created=1402170695').created.
+        should.equal('1402170695');
+      parseParams('Signature created=1402170695,').created.
+        should.equal('1402170695');
+    });
+    it('should parse quoted and unquoted params in either order', () => {
+      parseParams('Signature created=123,keyId="k"').should.eql(
+        {created: '123', keyId: 'k'});
+      parseParams('Signature keyId="k",created=123').should.eql(
+        {keyId: 'k', created: '123'});
+    });
+    it('should parse an unquoted decimal `expires`', () => {
+      // draft-cavage-12 allows sub-second precision on `expires`
+      parseParams('Signature expires=1402170699.5').expires.
+        should.equal('1402170699.5');
+    });
+    it('should reject unquoted values for other params', () => {
+      shouldThrowBadParam('Signature keyId=foo');
+      shouldThrowBadParam('Signature signature=123');
+      shouldThrowBadParam('Signature algorithm=hs2019');
+    });
+    it('should reject a non-numeric unquoted `created`', () => {
+      shouldThrowBadParam('Signature created=abc');
+      shouldThrowBadParam('Signature created=12ab');
+    });
+  });
   describe('parseRequest API', function() {
     // takes the result of parseRequest and tests it
     const shouldBeParsed = parsed => {
@@ -1343,5 +1408,34 @@ describe('http-signature', () => {
         request, {headers: ['host'], now});
       shouldBeParsed(parsed);
     });
+    // `created`/`expires` may arrive quoted or unquoted; both must verify
+    // against the same signing string
+    const timestampForms = [
+      ['quoted', `created="${now}",expires="${now + 600}"`],
+      ['unquoted', `created=${now},expires=${now + 600}`]
+    ];
+    for(const [label, params] of timestampForms) {
+      it(`should accept ${label} \`(created)\`/\`(expires)\` params`, () => {
+        const authorization = 'Signature keyId="https://example.com/key/1",' +
+          'headers="host (request-target) (created) (expires)",' +
+          `signature="mockSignature",${params}`;
+        const request = {
+          headers: {host: 'example.com:18443', authorization},
+          method: 'GET',
+          url: 'https://example.com:18443/1/2/3',
+        };
+        const parsed = httpSignatureHeader.parseRequest(
+          request, {headers: ['host', '(created)', '(expires)'], now});
+        shouldBeParsed(parsed);
+        // both forms surface the value as a string
+        parsed.params.created.should.equal(String(now));
+        parsed.params.expires.should.equal(String(now + 600));
+        parsed.signingString.should.equal(
+          'host: example.com:18443\n' +
+          '(request-target): get /1/2/3\n' +
+          `(created): ${now}\n` +
+          `(expires): ${now + 600}`);
+      });
+    }
   });
 });
