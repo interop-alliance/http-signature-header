@@ -1079,5 +1079,147 @@ describe('http-signature', () => {
       expect(error, 'error should exist').to.not.be.null;
       error.message.should.equal('(expires) was not a signed header');
     });
+    it('should accept a capitalized `Authorization` header', () => {
+      const created = now;
+      const Authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="date host (request-target) (created)",' +
+        `signature="mockSignature",created="${created}"`;
+      const request = {
+        headers: {
+          host: 'example.com:18443',
+          date: new Date(created * 1000).toUTCString(),
+          Authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const expectedHeaders = ['host', '(created)', '(request-target)'];
+      const parsed = httpSignatureHeader.parseRequest(
+        request, {headers: expectedHeaders, now});
+      shouldBeParsed(parsed);
+      parsed.keyId.should.equal('https://example.com/key/1');
+      parsed.params.signature.should.equal('mockSignature');
+      parsed.signingString.should.contain(`(created): ${created}`);
+    });
+    it('should accept an all-caps `AUTHORIZATION` header', () => {
+      const created = now;
+      const AUTHORIZATION = 'Signature keyId="https://example.com/key/1",' +
+        'headers="date host (request-target) (created)",' +
+        `signature="mockSignature",created="${created}"`;
+      const request = {
+        headers: {
+          host: 'example.com:18443',
+          date: new Date(created * 1000).toUTCString(),
+          AUTHORIZATION
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const expectedHeaders = ['host', '(created)', '(request-target)'];
+      const parsed = httpSignatureHeader.parseRequest(
+        request, {headers: expectedHeaders, now});
+      shouldBeParsed(parsed);
+      parsed.keyId.should.equal('https://example.com/key/1');
+    });
+    it('should match `authorizationHeaderName` case-insensitively', () => {
+      const created = now;
+      const authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="date host (request-target) (created)",' +
+        `signature="mockSignature",created="${created}"`;
+      const request = {
+        headers: {
+          host: 'example.com:18443',
+          date: new Date(created * 1000).toUTCString(),
+          'X-Auth': authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const expectedHeaders = ['host', '(created)', '(request-target)'];
+      const parsed = httpSignatureHeader.parseRequest(request, {
+        headers: expectedHeaders, now, authorizationHeaderName: 'x-auth'
+      });
+      shouldBeParsed(parsed);
+      parsed.keyId.should.equal('https://example.com/key/1');
+    });
+    it('should find covered headers regardless of their case', () => {
+      const created = now;
+      const authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="date host digest (request-target) (created)",' +
+        `signature="mockSignature",created="${created}"`;
+      const digest = 'SHA-256=abc123';
+      const date = new Date(created * 1000).toUTCString();
+      const request = {
+        headers: {
+          Host: 'example.com:18443',
+          Date: date,
+          Digest: digest,
+          Authorization: authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const expectedHeaders = ['host', '(created)', '(request-target)'];
+      const parsed = httpSignatureHeader.parseRequest(
+        request, {headers: expectedHeaders, now});
+      shouldBeParsed(parsed);
+      parsed.signingString.should.equal(
+        `date: ${date}\n` +
+        'host: example.com:18443\n' +
+        `digest: ${digest}\n` +
+        '(request-target): get /1/2/3\n' +
+        `(created): ${created}`);
+    });
+    it('should reject an expired capitalized `Expires` header', () => {
+      const created = now;
+      const authorization = 'Signature keyId="https://example.com/key/1",' +
+        'headers="host (request-target) (created)",' +
+        `signature="mockSignature",created="${created}"`;
+      const request = {
+        headers: {
+          Host: 'example.com:18443',
+          // expired beyond the default 300s clock skew
+          Expires: new Date((now - 301) * 1000),
+          Authorization: authorization
+        },
+        method: 'GET',
+        url: 'https://example.com:18443/1/2/3',
+      };
+      const expectedHeaders = ['host', '(created)', '(request-target)'];
+      let error = null;
+      let result = null;
+      try {
+        result = httpSignatureHeader.parseRequest(
+          request, {headers: expectedHeaders, now});
+      } catch(e) {
+        error = e;
+      }
+      expect(result, 'result should not exist').to.be.null;
+      expect(error, 'error should exist').to.not.be.null;
+      error.message.should.equal('The request has expired.');
+    });
+    it('should not confuse an `(expires)` param with an Expires header',
+      () => {
+        const created = now;
+        // `expires` is a signature param here, not an HTTP header; it must
+        // not be picked up by the request-expiry constraint check
+        const authorization = 'Signature keyId="https://example.com/key/1",' +
+          'headers="host (request-target) (created) (expires)",' +
+          `signature="mockSignature",created="${created}",` +
+          `expires="${created + 600}"`;
+        const request = {
+          headers: {
+            Host: 'example.com:18443',
+            Authorization: authorization
+          },
+          method: 'GET',
+          url: 'https://example.com:18443/1/2/3',
+        };
+        const expectedHeaders = ['host', '(created)', '(request-target)'];
+        const parsed = httpSignatureHeader.parseRequest(
+          request, {headers: expectedHeaders, now});
+        shouldBeParsed(parsed);
+        parsed.signingString.should.contain(`(expires): ${created + 600}`);
+      });
   });
 });
