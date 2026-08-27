@@ -2,6 +2,14 @@
 
 ## 5.0.3 - TBD
 
+### Added
+- `parseSignatureHeader()` now accepts the `created` and `expires` signature
+  parameters either quoted (`created="1402170695"`) or unquoted
+  (`created=1402170695`). draft-cavage-12 specifies the bare form, while
+  producers commonly emit the quoted one. Both surface as strings, and all
+  other parameters still require quotes. `createAuthzHeader()` output is
+  unchanged and remains quoted.
+
 ### Fixed
 - `parseRequest()` now matches request header names case-insensitively, as
   required by HTTP. A request carrying `Authorization` (or any other
